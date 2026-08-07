@@ -36,6 +36,13 @@ th:first-child, td:first-child { text-align: left; }
 td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
 tr:hover td { background: rgba(128,128,128,.05); }
 .tablewrap { overflow-x: auto; }
+/* Colonne 1 figée au scroll horizontal (lisibilité mobile) */
+.tablewrap th:first-child, .tablewrap td:first-child {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--card);
+  box-shadow: 2px 0 4px -2px rgba(0,0,0,.25);
+}
+.tablewrap tr:hover td:first-child { background: var(--card); }
 .divgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 10px; }
 .divcol { border-radius: 8px; padding: 10px; border: 1px solid; font-size: 12px; }
 .divcol .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
@@ -202,13 +209,21 @@ async function doRefresh() {
       const prev = prices.length >= 2 ? (+prices[prices.length-2].c || 0) : 0;
       return {px, isToday: d === today, prev, vol: +last.v || null, d};
     };
-    const tickers = D.positions_actions_mar.map(p => p.ticker);
-    const results = await Promise.allSettled(tickers.map(fetchOne));
+    // Toutes les valeurs cotées : cours pour les positions + volume marché entier
+    const allTickers = Object.keys(LIDS).filter(t => t !== "_MASI");
+    const allResults = await Promise.allSettled(allTickers.map(fetchOne));
+    const quotes = {};
+    allTickers.forEach((tk, i) => {
+      const q = allResults[i].status === "fulfilled" ? allResults[i].value : null;
+      if (q) quotes[tk] = q;
+    });
+    // Volume marché (séance) = Σ v×cours sur toutes les valeurs traitées aujourd'hui
+    const volTot = Object.values(quotes).reduce((t, q) => t + (q.isToday && q.vol ? q.vol * q.px : 0), 0);
+    if (volTot > 0) D.masi_volume = {mad: volTot, date: casaToday(), n: Object.values(quotes).filter(q => q.isToday && q.vol).length, source: "bmce_intraday_browser"};
     let nLive = 0;
-    results.forEach((res, i) => {
-      const q = res.status === "fulfilled" ? res.value : null;
+    D.positions_actions_mar.forEach((p) => {
+      const q = quotes[p.ticker];
       if (!q) return;
-      const p = D.positions_actions_mar[i];
       p.close_live = q.px;
       p.price_source = q.isToday ? "live_bmce" : "close_bmce";
       if (q.isToday) nLive++;
@@ -336,7 +351,7 @@ function render() {
     {l:"Actif net live", v:fmtMMAD(fm.actif_net_live_mad), s:`${fmt(fm.n_parts)} parts`},
     {l:"P&L actions MAR", v:(D.pnl_summary.pnl_actions_mar_mad>=0?"+":"")+fmtMMAD(D.pnl_summary.pnl_actions_mar_mad), c:cls(D.pnl_summary.pnl_actions_mar_mad), s:pct(D.pnl_summary.pnl_actions_mar_pct,1,true)+" sur coût"},
     {l:"MASI", v:fmt(bp?.masi_level,2), c:cls(bp?.masi_var_day_pct), s:(bp?.masi_var_day_pct!=null?pct(bp.masi_var_day_pct,2,true)+" jour · ":"")+(bp?.masi_as_of?dfr(bp.masi_as_of):"")},
-    {l:"Volume MASI (séance)", v:mv ? fmtMMAD(mv.mad) : "—", s:mv ? `dernière séance ${dfr(mv.date)}` : ""},
+    {l:"Volume marché (séance)", v:mv ? fmtMMAD(mv.mad) : "—", s:mv ? `${dfr(mv.date)} · Σ marché central${mv.source && mv.source.startsWith("bmce_intraday") ? " (intraday)" : " (EOD)"}` : ""},
   ].map(k => `<div class="kpi"><div class="l">${k.l}</div><div class="v ${k.c||""}">${k.v}</div><div class="s">${k.s||""}</div></div>`).join("");
 
   // Benchmark
@@ -369,7 +384,9 @@ function render() {
   document.getElementById("allocation").innerHTML = `
     <h3>Allocation <span class="sub">valeurs live poche MAR, reste au reporting${al.net_cash_mad < 0 ? " · cash net négatif (repo) exclu de la barre" : ""}</span></h3>
     <div class="alloc">${segs.map(s => `<div style="width:${Math.max(s[1],0)/totAl*100}%;background:${s[2]}" title="${s[0]}"></div>`).join("")}</div>
-    <div class="alloclegend">${segs.map(s => `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>
+    <div class="alloclegend">${segs.map(s => s[0] === "Cash net"
+      ? `<span><span class="dot" style="background:${s[2]}"></span>Cash ${fmtM(al.cash_long_mad)}${(al.dividendes_a_recevoir_mad||0) > 0 ? ` + créances div. ${fmtM(al.dividendes_a_recevoir_mad)}` : ""} − Repo ${fmtM(Math.abs(al.repo_mad))} = <b class="${cls(al.net_cash_mad)}">net ${fmtM(al.net_cash_mad)}</b> (${(al.net_cash_mad/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`
+      : `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>
     ${(D.positions_opcvm || []).map(o => {
       const pl = o.cmp_vl > 0 && o.vl_live != null ? (o.vl_live / o.cmp_vl - 1) * 100 : null;
       return `<div style="margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);font-size:11px">
