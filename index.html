@@ -94,7 +94,6 @@ button:disabled { opacity: .5; cursor: wait; }
 
 <div class="card" id="bench"></div>
 <div class="card" id="allocation"></div>
-<div class="card" id="dycard"></div>
 <div class="card" id="divcard"></div>
 <div class="card" id="sectors"></div>
 <div class="card" id="positions"></div>
@@ -114,6 +113,7 @@ let sortKey = "valorisation_live", sortDir = -1;
 const fmt = (n, d=0) => n == null ? "—" : n.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d});
 const fmtM = n => n == null ? "—" : (n/1e6).toLocaleString("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1}) + " M";
 const fmtMMAD = n => n == null ? "—" : (n/1e6).toLocaleString("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1}) + " MMAD";
+const fmtVol = n => n == null ? "—" : n >= 1e6 ? (n/1e6).toLocaleString("fr-FR",{maximumFractionDigits:1}) + " M" : n >= 1e3 ? (n/1e3).toLocaleString("fr-FR",{maximumFractionDigits:0}) + " k" : fmt(n);
 const pct = (n, d=2, sign=false) => n == null ? "—" : (sign && n >= 0 ? "+" : "") + n.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d}) + "%";
 const pp = (n, d=2) => n == null ? "—" : (n >= 0 ? "+" : "") + n.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d}) + "pp";
 const cls = n => n == null ? "" : n >= 0 ? "pos" : "neg";
@@ -200,7 +200,7 @@ async function doRefresh() {
       const px = +last.c || 0;
       if (px <= 0) return null;
       const prev = prices.length >= 2 ? (+prices[prices.length-2].c || 0) : 0;
-      return {px, isToday: d === today, prev};
+      return {px, isToday: d === today, prev, vol: +last.v || null, d};
     };
     const tickers = D.positions_actions_mar.map(p => p.ticker);
     const results = await Promise.allSettled(tickers.map(fetchOne));
@@ -215,6 +215,12 @@ async function doRefresh() {
       p.valorisation_live = p.quantite * q.px;
       p.pnl_mad = (q.px - p.cmp) * p.quantite;
       p.pnl_pct = p.cmp > 0 ? (q.px / p.cmp - 1) * 100 : null;
+      if (q.vol != null) {
+        // BMCE v = titres échangés sur la séance -> volume MAD ≈ titres × cours
+        p.vol_shares_day = q.vol;
+        p.vol_mad_day = q.vol * q.px;
+        p.vol_date = q.d;
+      }
     });
     // Recompute sleeve totals & weights
     const totalMarOld = D.allocation_live.actions_mar_mad;
@@ -303,12 +309,13 @@ function render() {
   } else st.style.display = "none";
 
   // KPIs
+  const mv = D.masi_volume;
   document.getElementById("kpis").innerHTML = [
     {l:"VL live (est.)", v:fmt(fm.vl_live_estimate,2)+" MAD", s:`vs ${fmt(fm.vl_at_report,2)} au reporting`},
-    {l:"Perf depuis reporting", v:pct(fm.perf_since_report_pct,2,true), c:cls(fm.perf_since_report_pct), s:`depuis le ${dfr(D.data_source_pdf_date)}`},
     {l:"Actif net live", v:fmtMMAD(fm.actif_net_live_mad), s:`${fmt(fm.n_parts)} parts`},
     {l:"P&L actions MAR", v:(D.pnl_summary.pnl_actions_mar_mad>=0?"+":"")+fmtMMAD(D.pnl_summary.pnl_actions_mar_mad), c:cls(D.pnl_summary.pnl_actions_mar_mad), s:pct(D.pnl_summary.pnl_actions_mar_pct,1,true)+" sur coût"},
     {l:"MASI", v:fmt(bp?.masi_level,2), c:cls(bp?.masi_var_day_pct), s:(bp?.masi_var_day_pct!=null?pct(bp.masi_var_day_pct,2,true)+" jour · ":"")+(bp?.masi_as_of?dfr(bp.masi_as_of):"")},
+    {l:"Volume MASI (séance)", v:mv ? fmtMMAD(mv.mad) : "—", s:mv ? `dernière séance ${dfr(mv.date)}` : ""},
   ].map(k => `<div class="kpi"><div class="l">${k.l}</div><div class="v ${k.c||""}">${k.v}</div><div class="s">${k.s||""}</div></div>`).join("");
 
   // Benchmark
@@ -342,19 +349,6 @@ function render() {
     <h3>Allocation <span class="sub">valeurs live poche MAR, reste au reporting${al.net_cash_mad < 0 ? " · cash net négatif (repo) exclu de la barre" : ""}</span></h3>
     <div class="alloc">${segs.map(s => `<div style="width:${Math.max(s[1],0)/totAl*100}%;background:${s[2]}" title="${s[0]}"></div>`).join("")}</div>
     <div class="alloclegend">${segs.map(s => `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>`;
-
-  // Dividend yield card
-  const dy = D.dividend_yield;
-  if (dy) {
-    document.getElementById("dycard").innerHTML = `
-      <h3>Rendement du dividende <span class="sub">poche actions MAR vs marché BVC · ${esc(dy.coverage)}${dy.as_of ? " · " + dfr(dy.as_of) : ""}</span></h3>
-      <div class="kpis" style="margin-top:6px">
-        <div class="kpi"><div class="l">Poche WG</div><div class="v">${pct(dy.sleeve_actions_mar_pct)}</div></div>
-        <div class="kpi"><div class="l">BVC flottant</div><div class="v">${pct(dy.bvc_float_weighted_pct)}</div></div>
-        <div class="kpi"><div class="l">BVC moy. simple</div><div class="v" style="color:var(--muted)">${pct(dy.bvc_simple_avg_pct)}</div></div>
-        <div class="kpi"><div class="l">Écart poche</div><div class="v ${cls(dy.sleeve_vs_bvc_pp)}">${pp(dy.sleeve_vs_bvc_pp)}</div></div>
-      </div>`;
-  }
 
   // Dividends ledger
   const dl = D.dividends_ledger;
@@ -422,7 +416,7 @@ function render() {
   const cols = [
     ["ticker","Titre"],["quantite","Qté"],["cmp","CMP"],["close_live","Cours"],
     ["pnl_pct","P&L %"],["pnl_mad","P&L MAD"],["valorisation_live","Valorisation"],
-    ["pct_sleeve_live","% poche"],["dividend_yield_pct","DY"],
+    ["pct_sleeve_live","% poche"],["vol_mad_day","Vol. jour"],["dividend_yield_pct","DY"],
   ];
   const ps = [...D.positions_actions_mar].sort((a,b) => {
     const va = a[sortKey], vb = b[sortKey];
@@ -442,6 +436,7 @@ function render() {
         <td class="${cls(p.pnl_mad)}">${fmt(p.pnl_mad)}</td>
         <td>${fmt(p.valorisation_live)}</td>
         <td>${p.pct_sleeve_live != null ? p.pct_sleeve_live.toFixed(1).replace(".",",")+"%" : "—"}</td>
+        <td title="${p.vol_shares_day != null ? fmt(p.vol_shares_day)+" titres · séance "+dfr(p.vol_date) : ""}">${fmtVol(p.vol_mad_day)}</td>
         <td>${p.dividend_yield_pct != null ? p.dividend_yield_pct.toFixed(2).replace(".",",")+"%" : "—"}</td>
       </tr>`).join("")}
     </table></div>`;
