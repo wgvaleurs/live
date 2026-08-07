@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WG Valeurs — Live</title>
+<style>
+:root {
+  --bg: #0b0e13; --card: #12161f; --card2: #0f131b; --border: rgba(255,255,255,.09);
+  --fg: #e6e9ef; --muted: #8b93a3; --muted2: #6b7280;
+  --emerald: #34d399; --emerald-d: #059669; --rose: #fb7185; --amber: #fbbf24; --sky: #38bdf8;
+  --emerald-bg: rgba(52,211,153,.07); --amber-bg: rgba(251,191,36,.07); --sky-bg: rgba(56,189,248,.07);
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg:#f6f7f9; --card:#ffffff; --card2:#fafbfc; --border:rgba(0,0,0,.10);
+    --fg:#111827; --muted:#5b6472; --muted2:#8a93a3;
+    --emerald:#059669; --rose:#e11d48; --amber:#b45309; --sky:#0284c7; }
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; max-width: 1120px; margin: 0 auto; }
+h1 { font-size: 17px; font-weight: 700; }
+h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.sub { font-size: 10px; color: var(--muted); font-weight: 400; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 10px; margin-top: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.kpi .l { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.kpi .v { font-size: 18px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 10px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.pos { color: var(--emerald); } .neg { color: var(--rose); } .amb { color: var(--amber); } .skyc { color: var(--sky); }
+.num { font-variant-numeric: tabular-nums; }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+tr:hover td { background: rgba(128,128,128,.05); }
+.tablewrap { overflow-x: auto; }
+.divgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 10px; }
+.divcol { border-radius: 8px; padding: 10px; border: 1px solid; font-size: 12px; }
+.divcol .hd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.divcol .t { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.divcol .lines { max-height: 200px; overflow-y: auto; }
+.divline { display: flex; align-items: baseline; gap: 6px; padding: 2px 0; }
+.divline .tk { font-weight: 600; }
+.divline .dt { font-size: 10px; color: var(--muted); }
+.divline .amt { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dy { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 5px; }
+.bar { position: relative; height: 8px; background: rgba(128,128,128,.12); border-radius: 2px; overflow: hidden; min-width: 110px; }
+.bar .mid { position: absolute; top: 0; bottom: 0; left: 50%; width: 1px; background: var(--border); }
+.bar .fill { position: absolute; top: 0; bottom: 0; }
+button, .btn { background: var(--emerald-bg); color: var(--emerald); border: 1px solid var(--emerald); border-radius: 7px; padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
+button:disabled { opacity: .5; cursor: wait; }
+.toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; }
+.toggle button { border: 0; border-radius: 0; background: transparent; color: var(--muted); font-size: 10px; padding: 4px 10px; }
+.toggle button.on { background: var(--emerald-bg); color: var(--emerald); }
+.head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.head .grow { flex: 1; min-width: 200px; }
+.stale { background: var(--amber-bg); border: 1px solid var(--amber); color: var(--amber); border-radius: 8px; padding: 8px 12px; font-size: 11px; margin-top: 10px; display: none; }
+.note { font-size: 9px; color: var(--muted2); font-style: italic; margin-top: 6px; }
+.badge { font-size: 9px; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
+.badge.live { border-color: var(--emerald); color: var(--emerald); }
+#err { color: var(--rose); font-size: 11px; margin-top: 8px; display: none; }
+.alloc { display: flex; height: 14px; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+.alloc div { height: 100%; }
+.alloclegend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: 10px; color: var(--muted); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+@media (max-width: 640px) { body { padding: 10px; } .kpi .v { font-size: 15px; } }
+</style>
+</head>
+<body>
+<div id="login" style="display:none;max-width:320px;margin:18vh auto 0;text-align:center">
+  <div class="card" style="padding:24px">
+    <h1 style="margin-bottom:14px">WG Valeurs — Live</h1>
+    <input id="lu" placeholder="Utilisateur" autocomplete="username" style="width:100%;margin-bottom:8px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card2);color:var(--fg);font:inherit">
+    <input id="lp" placeholder="Mot de passe" type="password" autocomplete="current-password" style="width:100%;margin-bottom:12px;padding:8px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card2);color:var(--fg);font:inherit">
+    <button style="width:100%" onclick="tryLogin()">Entrer</button>
+    <div id="loginerr" style="color:var(--rose);font-size:11px;margin-top:8px;display:none">Identifiants incorrects.</div>
+  </div>
+</div>
+<div id="app" style="display:none">
+<div class="head">
+  <div class="grow">
+    <h1>WG Valeurs — Live <span id="livebadge" class="badge">snapshot</span></h1>
+    <div class="sub" id="stamps">chargement…</div>
+  </div>
+  <button id="refreshbtn" onclick="doRefresh()">Actualiser</button>
+  <button style="background:transparent;color:var(--muted);border-color:var(--border)" onclick="logout()" title="Oublier les identifiants sur cet appareil">Déconnexion</button>
+</div>
+<div class="stale" id="stale"></div>
+<div id="err"></div>
+
+<div class="kpis" id="kpis"></div>
+
+<div class="card" id="bench"></div>
+<div class="card" id="allocation"></div>
+<div class="card" id="dycard"></div>
+<div class="card" id="divcard"></div>
+<div class="card" id="sectors"></div>
+<div class="card" id="positions"></div>
+<div class="card" id="intpos"></div>
+<p class="note" id="footnote"></p>
+</div><!-- /app -->
+
+<script>
+"use strict";
+const BMCE = "https://www.bmcecapitalbourse.com/bkbbourse/api/series/";
+let D = null;          // snapshot JSON
+let LIDS = null;       // ticker -> listing_id
+let liveAt = null;     // Date of last successful browser-side refresh
+let secBasis = "maroc";
+let sortKey = "valorisation_live", sortDir = -1;
+
+const fmt = (n, d=0) => n == null ? "—" : n.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d});
+const fmtM = n => n == null ? "—" : (n/1e6).toLocaleString("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1}) + " M";
+const fmtMMAD = n => n == null ? "—" : (n/1e6).toLocaleString("fr-FR", {minimumFractionDigits:1, maximumFractionDigits:1}) + " MMAD";
+const pct = (n, d=2, sign=false) => n == null ? "—" : (sign && n >= 0 ? "+" : "") + n.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d}) + "%";
+const pp = (n, d=2) => n == null ? "—" : (n >= 0 ? "+" : "") + n.toLocaleString("fr-FR", {minimumFractionDigits:d, maximumFractionDigits:d}) + "pp";
+const cls = n => n == null ? "" : n >= 0 ? "pos" : "neg";
+const dfr = s => { if (!s) return "—"; const [y,m,d] = s.slice(0,10).split("-"); return `${d}/${m}/${y.slice(2)}`; };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// --- Auth : payload chiffré AES-256-GCM, clé dérivée de user:pass (PBKDF2-SHA256 600k) ---
+const ITER = 600000;
+let CREDS = null;
+
+async function deriveKey(user, pass, salt) {
+  const mat = await crypto.subtle.importKey("raw", new TextEncoder().encode(user + ":" + pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({name:"PBKDF2", salt, iterations:ITER, hash:"SHA-256"}, mat,
+    {name:"AES-GCM", length:256}, false, ["decrypt"]);
+}
+
+async function decryptPayload(user, pass) {
+  const b64 = await fetch("data/payload.enc?t=" + Date.now()).then(r => { if (!r.ok) throw new Error("payload absent"); return r.text(); });
+  const raw = Uint8Array.from(atob(b64.trim()), c => c.charCodeAt(0));
+  const key = await deriveKey(user, pass, raw.slice(0, 16));
+  const pt = await crypto.subtle.decrypt({name:"AES-GCM", iv: raw.slice(16, 28)}, key, raw.slice(28));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+async function tryLogin() {
+  const u = document.getElementById("lu").value.trim(), p = document.getElementById("lp").value;
+  document.getElementById("loginerr").style.display = "none";
+  try {
+    const payload = await decryptPayload(u, p);
+    CREDS = {u, p};
+    localStorage.setItem("wgcreds", btoa(unescape(encodeURIComponent(u + "\n" + p))));
+    D = payload.snapshot; LIDS = payload.listings;
+    document.getElementById("login").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    render();
+  } catch (e) {
+    document.getElementById("loginerr").style.display = "block";
+  }
+}
+
+function logout() {
+  localStorage.removeItem("wgcreds");
+  location.reload();
+}
+
+async function load() {
+  const saved = localStorage.getItem("wgcreds");
+  if (saved) {
+    try {
+      const [u, p] = decodeURIComponent(escape(atob(saved))).split("\n");
+      const payload = await decryptPayload(u, p);
+      CREDS = {u, p};
+      D = payload.snapshot; LIDS = payload.listings;
+      document.getElementById("app").style.display = "block";
+      render();
+      return;
+    } catch (e) { localStorage.removeItem("wgcreds"); }
+  }
+  document.getElementById("login").style.display = "block";
+  const lp = document.getElementById("lp");
+  lp.addEventListener("keydown", e => { if (e.key === "Enter") tryLogin(); });
+}
+
+function casaToday() {
+  return new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Casablanca", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date());
+}
+
+async function doRefresh() {
+  const btn = document.getElementById("refreshbtn");
+  btn.disabled = true; btn.textContent = "Actualisation…";
+  document.getElementById("err").style.display = "none";
+  try {
+    const today = casaToday();
+    const fetchOne = async (tk) => {
+      const lid = LIDS[tk];
+      if (!lid) return null;
+      const u = BMCE + "?lid=" + encodeURIComponent(lid) + "&max=3&mode=snap&period=1d&vt=yes&intra=true";
+      const r = await fetch(u, {signal: AbortSignal.timeout(12000)});
+      const j = await r.json();
+      const prices = (j && j.prices) || [];
+      if (!prices.length) return null;
+      const last = prices[prices.length - 1];
+      const d = new Intl.DateTimeFormat("en-CA", {timeZone:"Africa/Casablanca", year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date(last.d));
+      const px = +last.c || 0;
+      if (px <= 0) return null;
+      const prev = prices.length >= 2 ? (+prices[prices.length-2].c || 0) : 0;
+      return {px, isToday: d === today, prev};
+    };
+    const tickers = D.positions_actions_mar.map(p => p.ticker);
+    const results = await Promise.allSettled(tickers.map(fetchOne));
+    let nLive = 0;
+    results.forEach((res, i) => {
+      const q = res.status === "fulfilled" ? res.value : null;
+      if (!q) return;
+      const p = D.positions_actions_mar[i];
+      p.close_live = q.px;
+      p.price_source = q.isToday ? "live_bmce" : "close_bmce";
+      if (q.isToday) nLive++;
+      p.valorisation_live = p.quantite * q.px;
+      p.pnl_mad = (q.px - p.cmp) * p.quantite;
+      p.pnl_pct = p.cmp > 0 ? (q.px / p.cmp - 1) * 100 : null;
+    });
+    // Recompute sleeve totals & weights
+    const totalMarOld = D.allocation_live.actions_mar_mad;
+    const totalMar = D.positions_actions_mar.reduce((t,p) => t + (p.valorisation_live || 0), 0);
+    D.positions_actions_mar.forEach(p => { p.pct_sleeve_live = (p.valorisation_live || 0) / totalMar * 100; });
+    // Actif net & VL : poche MAR live, reste (INT/oblig/OPCVM/cash) au snapshot
+    const rest = D.fund_metrics_live.actif_net_live_mad - totalMarOld;
+    const actifNet = rest + totalMar;
+    const fm = D.fund_metrics_live;
+    fm.actif_net_live_mad = actifNet;
+    fm.vl_live_estimate = actifNet / fm.n_parts;
+    fm.vl_change_since_report_pct = fm.vl_at_report > 0 ? (fm.vl_live_estimate / fm.vl_at_report - 1) * 100 : null;
+    fm.perf_since_report_pct = fm.vl_change_since_report_pct;
+    D.allocation_live.actions_mar_mad = totalMar;
+    D.positions_actions_mar.forEach(p => { p.pct_actif_live = (p.valorisation_live || 0) / actifNet * 100; });
+    D.pnl_summary.pnl_actions_mar_mad = D.positions_actions_mar.reduce((t,p) => t + (p.pnl_mad || 0), 0);
+    D.pnl_summary.pnl_actions_mar_pct = D.pnl_summary.cost_basis_mar_mad > 0 ? D.pnl_summary.pnl_actions_mar_mad / D.pnl_summary.cost_basis_mar_mad * 100 : null;
+    // Sector WG weights (MASI weights stay snapshot — they need the DB)
+    const bySec = {};
+    D.positions_actions_mar.forEach(p => {
+      const s = (D.sector_vs_masi.find(x => x.sector === p.secteur) ? p.secteur : null) || p.secteur;
+      bySec[s] = (bySec[s] || 0) + (p.valorisation_live || 0);
+    });
+    // map via original taxonomy: rebuild from ticker->sector used in sector_vs_masi is not embedded,
+    // so recompute proportionally: scale each sector row by sleeve growth of its holdings is unavailable ->
+    // recompute strictly if taxonomy matches, else keep snapshot.
+    const eqShare = totalMar / actifNet;
+    D.sector_vs_masi.forEach(row => {
+      if (bySec[row.sector] != null || row.wg_pct === 0) {
+        const w = (bySec[row.sector] || 0) / totalMar * 100;
+        if (bySec[row.sector] != null) { row.wg_pct = w; }
+        row.active_pp = row.wg_pct - row.masi_pct;
+        row.wg_pct_nav = row.wg_pct * eqShare;
+        row.active_pp_nav = row.wg_pct_nav - row.masi_pct;
+      }
+    });
+    // MASI live
+    if (LIDS._MASI) {
+      try {
+        const m = await fetchOne("_MASI");
+        if (m && m.isToday) {
+          D.benchmark_perf.masi_level = m.px;
+          D.benchmark_perf.masi_var_day_pct = m.prev > 0 ? (m.px / m.prev - 1) * 100 : null;
+          D.benchmark_perf.masi_source = "live_bmce_browser";
+          D.benchmark_perf.masi_as_of = today;
+          for (const leg of [D.benchmark_perf.ytd, D.benchmark_perf.y1]) {
+            if (leg && leg.masi_base > 0) { leg.masi_pct = (m.px / leg.masi_base - 1) * 100; }
+          }
+        }
+      } catch (e) {}
+    }
+    // WG legs from live VL
+    for (const leg of [D.benchmark_perf?.ytd, D.benchmark_perf?.y1]) {
+      if (leg && leg.vl_base > 0) {
+        leg.wg_pct = (fm.vl_live_estimate / leg.vl_base - 1) * 100;
+        leg.spread_pp = leg.wg_pct - leg.masi_pct;
+        if (leg.masi_tr_pct != null) leg.spread_tr_pp = leg.wg_pct - leg.masi_tr_pct;
+      }
+    }
+    D.n_live_intraday = nLive;
+    liveAt = new Date();
+    render();
+  } catch (e) {
+    const el = document.getElementById("err");
+    el.textContent = "Échec de l'actualisation live (API BMCE injoignable ?) — données du snapshot affichées. " + e.message;
+    el.style.display = "block";
+  }
+  btn.disabled = false; btn.textContent = "Actualiser";
+}
+
+function render() {
+  const fm = D.fund_metrics_live, bp = D.benchmark_perf, al = D.allocation_live;
+
+  // Header stamps + staleness
+  const snapAge = (Date.now() - new Date(D.refreshed_at).getTime()) / 36e5;
+  document.getElementById("stamps").innerHTML =
+    `Snapshot moteur : <b>${dfr(D.refreshed_at)} ${D.refreshed_at.slice(11,16)}</b>` +
+    ` · reporting WG du ${dfr(D.data_source_pdf_date)}` +
+    (liveAt ? ` · cours live navigateur : <b>${liveAt.toLocaleTimeString("fr-FR")}</b> (${D.n_live_intraday}/${D.positions_actions_mar.length} du jour)` : ` · ${D.n_live_intraday}/${D.positions_actions_mar.length} cours du jour`);
+  const badge = document.getElementById("livebadge");
+  if (liveAt) { badge.textContent = "live"; badge.className = "badge live"; }
+  const st = document.getElementById("stale");
+  if (!liveAt && snapAge > 24) {
+    st.style.display = "block";
+    st.textContent = `⚠ Snapshot vieux de ${Math.round(snapAge)} h — clique « Actualiser » pour recharger les cours live en direct (fonctionne même si la machine source est éteinte ; seuls poids MASI/DY/dividendes restent au snapshot).`;
+  } else st.style.display = "none";
+
+  // KPIs
+  document.getElementById("kpis").innerHTML = [
+    {l:"VL live (est.)", v:fmt(fm.vl_live_estimate,2)+" MAD", s:`vs ${fmt(fm.vl_at_report,2)} au reporting`},
+    {l:"Perf depuis reporting", v:pct(fm.perf_since_report_pct,2,true), c:cls(fm.perf_since_report_pct), s:`depuis le ${dfr(D.data_source_pdf_date)}`},
+    {l:"Actif net live", v:fmtMMAD(fm.actif_net_live_mad), s:`${fmt(fm.n_parts)} parts`},
+    {l:"P&L actions MAR", v:(D.pnl_summary.pnl_actions_mar_mad>=0?"+":"")+fmtMMAD(D.pnl_summary.pnl_actions_mar_mad), c:cls(D.pnl_summary.pnl_actions_mar_mad), s:pct(D.pnl_summary.pnl_actions_mar_pct,1,true)+" sur coût"},
+    {l:"MASI", v:fmt(bp?.masi_level,2), c:cls(bp?.masi_var_day_pct), s:(bp?.masi_var_day_pct!=null?pct(bp.masi_var_day_pct,2,true)+" jour · ":"")+(bp?.masi_as_of?dfr(bp.masi_as_of):"")},
+  ].map(k => `<div class="kpi"><div class="l">${k.l}</div><div class="v ${k.c||""}">${k.v}</div><div class="s">${k.s||""}</div></div>`).join("");
+
+  // Benchmark
+  if (bp) {
+    const leg = (name, L) => L ? `
+      <tr><td>${name}</td>
+      <td class="${cls(L.wg_pct)}">${pct(L.wg_pct,2,true)}</td>
+      <td class="${cls(L.masi_pct)}">${pct(L.masi_pct,2,true)}</td>
+      <td class="${cls(L.spread_pp)}"><b>${pp(L.spread_pp)}</b></td>
+      <td class="${cls(L.masi_tr_pct)}">${pct(L.masi_tr_pct,2,true)}</td>
+      <td class="${cls(L.spread_tr_pp)}"><b>${pp(L.spread_tr_pp)}</b></td>
+      <td class="sub">base ${dfr(L.base_date)}</td></tr>` : "";
+    document.getElementById("bench").innerHTML = `
+      <h3>WG vs MASI <span class="sub">VL live vs indice cours · « net div. » = proxy total-return</span></h3>
+      <div class="tablewrap"><table>
+      <tr><th>Fenêtre</th><th>WG</th><th>MASI (cours)</th><th>Écart</th><th>MASI TR</th><th>Écart net div.</th><th></th></tr>
+      ${leg("YTD", bp.ytd)}${leg("12 mois", bp.y1)}
+      </table></div>`;
+  }
+
+  // Allocation
+  const segs = [
+    ["Actions Maroc", al.actions_mar_mad, "var(--emerald)"],
+    ["Actions intl", al.actions_int_mad, "var(--sky)"],
+    ["Obligations", al.obligations_mad, "var(--amber)"],
+    ["OPCVM", al.opcvm_mad, "#a78bfa"],
+    ["Cash net", Math.max(al.net_cash_mad, 0), "var(--muted2)"],
+  ];
+  const totAl = segs.reduce((t,s) => t + Math.max(s[1],0), 0);
+  document.getElementById("allocation").innerHTML = `
+    <h3>Allocation <span class="sub">valeurs live poche MAR, reste au reporting${al.net_cash_mad < 0 ? " · cash net négatif (repo) exclu de la barre" : ""}</span></h3>
+    <div class="alloc">${segs.map(s => `<div style="width:${Math.max(s[1],0)/totAl*100}%;background:${s[2]}" title="${s[0]}"></div>`).join("")}</div>
+    <div class="alloclegend">${segs.map(s => `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>`;
+
+  // Dividend yield card
+  const dy = D.dividend_yield;
+  if (dy) {
+    document.getElementById("dycard").innerHTML = `
+      <h3>Rendement du dividende <span class="sub">poche actions MAR vs marché BVC · ${esc(dy.coverage)}${dy.as_of ? " · " + dfr(dy.as_of) : ""}</span></h3>
+      <div class="kpis" style="margin-top:6px">
+        <div class="kpi"><div class="l">Poche WG</div><div class="v">${pct(dy.sleeve_actions_mar_pct)}</div></div>
+        <div class="kpi"><div class="l">BVC flottant</div><div class="v">${pct(dy.bvc_float_weighted_pct)}</div></div>
+        <div class="kpi"><div class="l">BVC moy. simple</div><div class="v" style="color:var(--muted)">${pct(dy.bvc_simple_avg_pct)}</div></div>
+        <div class="kpi"><div class="l">Écart poche</div><div class="v ${cls(dy.sleeve_vs_bvc_pp)}">${pp(dy.sleeve_vs_bvc_pp)}</div></div>
+      </div>`;
+  }
+
+  // Dividends ledger
+  const dl = D.dividends_ledger;
+  if (dl) {
+    const dyb = l => l.yield_pct != null ? `<span class="dy" title="DPS / cours au détachement">${l.yield_pct.toFixed(1).replace(".",",")}%</span>` : "";
+    const line = (l, color, amtKey, prefix="") => `
+      <div class="divline" title="${l.dps_mad} MAD × ${fmt(l.quantite)} titres">
+        <span class="tk">${esc(l.ticker)}</span>
+        <span class="dt">${l.detachement ? "dét. " + dfr(l.detachement) : ""}${l.paiement ? " · paie " + dfr(l.paiement) : ""}</span>
+        <span class="amt ${color}">${dyb(l)}${prefix}${fmt(l[amtKey])}</span>
+      </div>`;
+    const received = [...dl.received].sort((a,b) => b.montant_mad - a.montant_mad);
+    document.getElementById("divcard").innerHTML = `
+      <h3>Dividendes <span class="sub">depuis le reporting${dl.window ? " · fenêtre " + esc(dl.window) : ""} · % = rendement au cours du détachement</span></h3>
+      <div class="divgrid">
+        <div class="divcol" style="border-color:var(--emerald);background:var(--emerald-bg)">
+          <div class="hd"><span class="t">Encaissés (${received.length})</span><b class="pos num">+${fmt(dl.total_recu_mad)}</b></div>
+          <div class="lines">${received.map(l => line(l, "pos", "montant_mad")).join("")}</div>
+        </div>
+        <div class="divcol" style="border-color:var(--amber);background:var(--amber-bg)">
+          <div class="hd"><span class="t">Détachés · créance (${dl.receivable.length})</span><b class="amb num">+${fmt(dl.total_a_recevoir_mad)}</b></div>
+          <div class="lines">${dl.receivable.map(l => line(l, "amb", "montant_mad")).join("") || '<span class="sub">Aucune créance — tout est encaissé.</span>'}</div>
+        </div>
+        <div class="divcol" style="border-color:var(--sky);background:var(--sky-bg)">
+          <div class="hd"><span class="t">À venir (${dl.upcoming.length})</span><b class="skyc num">~${fmt(dl.total_a_venir_mad)}</b></div>
+          <div class="lines">${dl.upcoming.map(l => line(l, "skyc", "montant_estime_mad", "~")).join("") || '<span class="sub">Aucun détachement programmé.</span>'}</div>
+        </div>
+      </div>
+      <p class="note">${esc(dl._note)}</p>`;
+  }
+
+  // Sectors
+  const sv = D.sector_vs_masi;
+  if (sv) {
+    const nav = secBasis === "global";
+    const rows = sv.filter(s => s.wg_pct > 0 || s.masi_pct >= 1).map(s => {
+      const wgv = nav ? (s.wg_pct_nav ?? 0) : s.wg_pct;
+      const a = wgv - s.masi_pct;
+      const w = Math.min(Math.abs(a), 12) / 12 * 50;
+      return `<tr><td>${esc(s.sector.slice(0,28))}</td>
+        <td>${wgv.toFixed(1).replace(".",",")}%</td>
+        <td style="color:var(--muted)">${s.masi_pct.toFixed(1).replace(".",",")}%</td>
+        <td class="${a > .5 ? "pos" : a < -.5 ? "neg" : ""}"><b>${(a>=0?"+":"")+a.toFixed(1).replace(".",",")}</b></td>
+        <td><div class="bar"><div class="mid"></div><div class="fill" style="${a>=0?"left":"right"}:50%;width:${w}%;background:${a>=0?"var(--emerald)":"var(--rose)"};opacity:.65"></div></div></td></tr>`;
+    }).join("");
+    const hidden = sv.filter(s => !(s.wg_pct > 0 || s.masi_pct >= 1));
+    const hMasi = hidden.reduce((t,s) => t + s.masi_pct, 0);
+    document.getElementById("sectors").innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap">
+        <h3>Concentration sectorielle — ${nav ? "poche globale" : "poche Maroc"} vs MASI
+          <span class="sub">${nav ? "poids % de la NAV totale · MASI = % actions" : "poids % des actions MAR · MASI flottant"}</span></h3>
+        <span class="toggle">
+          <button class="${secBasis==="maroc"?"on":""}" onclick="secBasis='maroc';render()">Poche Maroc</button>
+          <button class="${secBasis==="global"?"on":""}" onclick="secBasis='global';render()">Poche globale</button>
+        </span>
+      </div>
+      <div class="tablewrap"><table>
+        <tr><th>Secteur</th><th>WG % ${nav?"(NAV)":"(actions)"}</th><th>MASI %</th><th>Actif (pp)</th><th style="width:130px">Sur/sous-pondération</th></tr>
+        ${rows}
+        ${hMasi >= .05 ? `<tr style="color:var(--muted2);font-style:italic"><td>Autres (${hidden.length} secteurs non détenus)</td><td>0,0%</td><td>${hMasi.toFixed(1).replace(".",",")}%</td><td>−${hMasi.toFixed(1).replace(".",",")}</td><td></td></tr>` : ""}
+      </table></div>`;
+  }
+
+  // Positions table
+  const cols = [
+    ["ticker","Titre"],["quantite","Qté"],["cmp","CMP"],["close_live","Cours"],
+    ["pnl_pct","P&L %"],["pnl_mad","P&L MAD"],["valorisation_live","Valorisation"],
+    ["pct_sleeve_live","% poche"],["dividend_yield_pct","DY"],
+  ];
+  const ps = [...D.positions_actions_mar].sort((a,b) => {
+    const va = a[sortKey], vb = b[sortKey];
+    if (typeof va === "string") return sortDir * va.localeCompare(vb);
+    return sortDir * ((va ?? -1e18) - (vb ?? -1e18));
+  });
+  document.getElementById("positions").innerHTML = `
+    <h3>Positions actions marocaines — ${ps.length} <span class="sub">quantités au reporting ${dfr(D.data_source_pdf_date)} · cliquer un en-tête pour trier</span></h3>
+    <div class="tablewrap"><table>
+      <tr>${cols.map(c => `<th onclick="setSort('${c[0]}')">${c[1]}${sortKey===c[0] ? (sortDir<0?" ↓":" ↑") : ""}</th>`).join("")}</tr>
+      ${ps.map(p => `<tr>
+        <td><b>${esc(p.ticker)}</b> <span class="sub">${esc((p.name||"").slice(0,20))}</span></td>
+        <td>${fmt(p.quantite)}</td>
+        <td>${fmt(p.cmp,2)}</td>
+        <td>${fmt(p.close_live,2)}${p.price_source && p.price_source.startsWith("live") ? ' <span class="badge live" style="font-size:8px">live</span>' : ""}</td>
+        <td class="${cls(p.pnl_pct)}">${pct(p.pnl_pct,1,true)}</td>
+        <td class="${cls(p.pnl_mad)}">${fmt(p.pnl_mad)}</td>
+        <td>${fmt(p.valorisation_live)}</td>
+        <td>${p.pct_sleeve_live != null ? p.pct_sleeve_live.toFixed(1).replace(".",",")+"%" : "—"}</td>
+        <td>${p.dividend_yield_pct != null ? p.dividend_yield_pct.toFixed(2).replace(".",",")+"%" : "—"}</td>
+      </tr>`).join("")}
+    </table></div>`;
+
+  // INT positions
+  const ip = D.positions_actions_int || [];
+  if (ip.length) {
+    document.getElementById("intpos").innerHTML = `
+      <h3>Poche internationale — ${ip.length} <span class="sub">valorisée au dernier snapshot moteur (Yahoo) — non actualisée par le navigateur</span></h3>
+      <div class="tablewrap"><table>
+        <tr><th>Titre</th><th>Qté</th><th>CMP USD</th><th>Cours USD</th><th>Valo MAD</th></tr>
+        ${ip.map(p => `<tr>
+          <td><b>${esc(p.ticker_external)}</b> <span class="sub">${esc(p.name||"")}</span></td>
+          <td>${fmt(p.quantite)}</td><td>${fmt(p.cmp_usd,2)}</td><td>${fmt(p.usd_price_live,2)}</td>
+          <td>${fmt(p.valorisation_live_mad ?? p.valorisation_mad)}</td></tr>`).join("")}
+      </table></div>`;
+  }
+
+  document.getElementById("footnote").textContent =
+    "Montants en MAD. « Actualiser » recharge les cours BVC en direct (API BMCE Capital) dans le navigateur et recalcule valorisations, VL, P&L, poids poche et benchmark. " +
+    "Poids MASI, rendements dividendes et poche internationale proviennent du dernier snapshot moteur (" + dfr(D.refreshed_at) + "). " +
+    "Quantités figées au dernier reporting WG (" + dfr(D.data_source_pdf_date) + ").";
+}
+
+function setSort(k) {
+  if (sortKey === k) sortDir = -sortDir; else { sortKey = k; sortDir = -1; }
+  render();
+}
+
+load().catch(e => {
+  document.getElementById("stamps").textContent = "Erreur de chargement du snapshot : " + e.message;
+});
+</script>
+</body>
+</html>
