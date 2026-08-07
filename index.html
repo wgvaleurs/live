@@ -348,7 +348,15 @@ function render() {
   document.getElementById("allocation").innerHTML = `
     <h3>Allocation <span class="sub">valeurs live poche MAR, reste au reporting${al.net_cash_mad < 0 ? " · cash net négatif (repo) exclu de la barre" : ""}</span></h3>
     <div class="alloc">${segs.map(s => `<div style="width:${Math.max(s[1],0)/totAl*100}%;background:${s[2]}" title="${s[0]}"></div>`).join("")}</div>
-    <div class="alloclegend">${segs.map(s => `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>`;
+    <div class="alloclegend">${segs.map(s => `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>
+    ${(D.positions_opcvm || []).map(o => {
+      const e = o.estimate;
+      return `<div style="margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);font-size:11px">
+        <b>Détail OPCVM — ${esc(o.name)}</b> <span class="sub">(100 % de la poche)</span><br>
+        <span class="num">${fmt(o.parts,2)} parts · VL reporting <b>${fmt(o.vl_at_report,2)} MAD</b> (${dfr(D.data_source_pdf_date)}) · CMP ${fmt(o.cmp_vl,2)} · valorisation officielle <b>${fmtMMAD(o.valorisation_live_mad)}</b></span>
+        ${e ? `<br><span class="num" style="color:var(--muted)">VL estimée <b>~${fmt(e.vl_estimee,2)} MAD</b> (valo ~${fmtMMAD(e.valorisation_estimee_mad)}) — proxy MASI ${pct(e.masi_var_pct,2,true)} du ${dfr(e.masi_ref_date)} au ${dfr(e.masi_now_date)} · <i>estimation, non comptée dans l'actif net</i></span>` : ""}
+      </div>`;
+    }).join("")}`;
 
   // Dividends ledger
   const dl = D.dividends_ledger;
