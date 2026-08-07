@@ -222,13 +222,34 @@ async function doRefresh() {
         p.vol_date = q.d;
       }
     });
+    // VL OPCVM officielle (wineo.ma, CORS ouvert) — hebdo, donc souvent inchangée
+    let opcvmDelta = 0;
+    try {
+      for (const o of (D.positions_opcvm || [])) {
+        if (!/win/i.test(o.name)) continue;
+        const j = await fetch("https://www.wineo.ma/api/public/fund-history?fund=" + encodeURIComponent("FCP WINEO ACTIONS"), {signal: AbortSignal.timeout(12000)}).then(r => r.json());
+        const h = (j && j.history) || [];
+        if (h.length) {
+          const last = h[h.length - 1];
+          const vl = +last.value;
+          if (vl > 0) {
+            const oldValo = o.valorisation_live_mad;
+            o.vl_live = vl; o.vl_date = String(last.date).slice(0, 10);
+            o.vl_source = "wineo.ma (VL officielle hebdomadaire)";
+            o.valorisation_live_mad = o.parts * vl;
+            opcvmDelta += o.valorisation_live_mad - oldValo;
+          }
+        }
+      }
+    } catch (e) {}
     // Recompute sleeve totals & weights
     const totalMarOld = D.allocation_live.actions_mar_mad;
     const totalMar = D.positions_actions_mar.reduce((t,p) => t + (p.valorisation_live || 0), 0);
     D.positions_actions_mar.forEach(p => { p.pct_sleeve_live = (p.valorisation_live || 0) / totalMar * 100; });
-    // Actif net & VL : poche MAR live, reste (INT/oblig/OPCVM/cash) au snapshot
-    const rest = D.fund_metrics_live.actif_net_live_mad - totalMarOld;
+    // Actif net & VL : poche MAR live + VL OPCVM live, reste (INT/oblig/cash) au snapshot
+    const rest = D.fund_metrics_live.actif_net_live_mad - totalMarOld + opcvmDelta;
     const actifNet = rest + totalMar;
+    D.allocation_live.opcvm_mad += opcvmDelta;
     const fm = D.fund_metrics_live;
     fm.actif_net_live_mad = actifNet;
     fm.vl_live_estimate = actifNet / fm.n_parts;
@@ -350,11 +371,10 @@ function render() {
     <div class="alloc">${segs.map(s => `<div style="width:${Math.max(s[1],0)/totAl*100}%;background:${s[2]}" title="${s[0]}"></div>`).join("")}</div>
     <div class="alloclegend">${segs.map(s => `<span><span class="dot" style="background:${s[2]}"></span>${s[0]} ${fmtM(s[1])} (${(s[1]/fm.actif_net_live_mad*100).toFixed(1)}%)</span>`).join("")}</div>
     ${(D.positions_opcvm || []).map(o => {
-      const e = o.estimate;
+      const pl = o.cmp_vl > 0 && o.vl_live != null ? (o.vl_live / o.cmp_vl - 1) * 100 : null;
       return `<div style="margin-top:10px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);font-size:11px">
-        <b>Détail OPCVM — ${esc(o.name)}</b> <span class="sub">(100 % de la poche)</span><br>
-        <span class="num">${fmt(o.parts,2)} parts · VL reporting <b>${fmt(o.vl_at_report,2)} MAD</b> (${dfr(D.data_source_pdf_date)}) · CMP ${fmt(o.cmp_vl,2)} · valorisation officielle <b>${fmtMMAD(o.valorisation_live_mad)}</b></span>
-        ${e ? `<br><span class="num" style="color:var(--muted)">VL estimée <b>~${fmt(e.vl_estimee,2)} MAD</b> (valo ~${fmtMMAD(e.valorisation_estimee_mad)}) — proxy MASI ${pct(e.masi_var_pct,2,true)} du ${dfr(e.masi_ref_date)} au ${dfr(e.masi_now_date)} · <i>estimation, non comptée dans l'actif net</i></span>` : ""}
+        <b>Détail OPCVM — ${esc(o.name)}</b> <span class="sub">(100 % de la poche · VL hebdomadaire · ${esc(o.vl_source || "VL du reporting")})</span><br>
+        <span class="num">${fmt(o.parts,2)} parts · VL <b>${fmt(o.vl_live ?? o.vl_at_report,2)} MAD</b>${o.vl_date ? ` (${dfr(o.vl_date)})` : ` (reporting ${dfr(D.data_source_pdf_date)})`} · CMP ${fmt(o.cmp_vl,2)} · valorisation <b>${fmtMMAD(o.valorisation_live_mad)}</b>${pl != null ? ` · <span class="${cls(pl)}">${pct(pl,1,true)} vs CMP</span>` : ""}</span>
       </div>`;
     }).join("")}`;
 
