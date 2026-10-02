@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>WG Board</title>
+<style>
+:root {
+  --bg: #0b0e13; --card: #12161f; --border: rgba(255,255,255,.09);
+  --fg: #e6e9ef; --muted: #8b93a3;
+  --emerald: #34d399; --rose: #fb7185; --amber: #fbbf24; --sky: #38bdf8;
+  --emerald-bg: rgba(52,211,153,.07); --amber-bg: rgba(251,191,36,.07); --rose-bg: rgba(251,113,133,.06);
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg:#f6f7f9; --card:#ffffff; --border:rgba(0,0,0,.10); --fg:#111827; --muted:#5b6472;
+    --emerald:#059669; --rose:#e11d48; --amber:#b45309; --sky:#0284c7; }
+}
+* { box-sizing: border-box; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 16px; max-width: 1120px; margin: 0 auto; }
+h1 { font-size: 17px; font-weight: 700; }
+h2 { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+.sub { font-size: 11px; color: var(--muted); }
+.lbl { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; margin-bottom: 6px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 14px; margin-top: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 10px; margin-top: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.kpi .v { font-size: 18px; font-weight: 700; margin-top: 3px; font-variant-numeric: tabular-nums; }
+.kpi .s { font-size: 10.5px; color: var(--muted); margin-top: 2px; }
+.pos { color: var(--emerald); } .neg { color: var(--rose); } .amb { color: var(--amber); } .mut { color: var(--muted); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wrap { overflow-x: auto; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 5; border-bottom: 1px solid var(--border); }
+.tab { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 7px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.tab.on { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.badge { display: inline-block; border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.b-red { border-color: var(--rose); color: var(--rose); } .b-grn { border-color: var(--emerald); color: var(--emerald); } .b-amb { border-color: var(--amber); color: var(--amber); }
+.oet { border: 1px solid var(--fg); border-radius: 10px; padding: 10px 12px; margin-top: 10px; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); gap: 10px; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px,1fr)); gap: 8px; }
+.tile { border: 1px solid var(--border); border-radius: 8px; padding: 9px; }
+.tile .e { font-weight: 700; font-size: 12.5px; }
+.chg { border: 1px solid var(--border); border-radius: 8px; padding: 10px; }
+.chg .t { font-weight: 700; }
+.chg .m { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.chip { display: inline-block; border: 1px solid var(--border); border-radius: 5px; padding: 0 5px; font-size: 11px; margin: 2px 3px 0 0; }
+a { color: var(--sky); }
+#login { max-width: 360px; margin: 18vh auto 0; }
+input { width: 100%; padding: 9px 10px; border-radius: 7px; border: 1px solid var(--border); background: var(--card); color: var(--fg); margin-top: 8px; font-size: 13px; }
+button.go { width: 100%; margin-top: 10px; background: var(--emerald-bg); color: var(--emerald); border: 1px solid var(--emerald); border-radius: 7px; padding: 9px; font-weight: 700; cursor: pointer; }
+.hide { display: none; }
+p + p { margin-top: 6px; }
+</style>
+</head>
+<body>
+<div id="login" class="card">
+  <h1>WG Board</h1>
+  <p class="sub" style="margin-top:4px">Accès réservé aux membres du board. Le contenu est chiffré et déchiffré dans votre navigateur.</p>
+  <input id="u" placeholder="Identifiant" autocomplete="username">
+  <input id="p" type="password" placeholder="Mot de passe" autocomplete="current-password">
+  <button class="go" id="go">Ouvrir</button>
+  <p id="err" class="sub neg" style="margin-top:8px"></p>
+</div>
+<div id="app" class="hide"></div>
+<script>
+const ITER = 600000;
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const pct = (x, d = 2) => (x == null ? "—" : `${Number(x).toLocaleString("fr-FR", { maximumFractionDigits: d })} %`);
+const sgn = (x, d = 2) => (x == null ? "—" : `${x > 0 ? "+" : ""}${Number(x).toLocaleString("fr-FR", { maximumFractionDigits: d })}`);
+const dmy = (s) => (s && /^\d{4}-\d{2}-\d{2}/.test(s) ? `${s.slice(8, 10)}/${s.slice(5, 7)}` : esc(s || "—"));
+const SENS = { REDUCE: ["Réduire", "b-red"], EXIT: ["Sortir", "b-red"], ADD: ["Renforcer", "b-grn"], HOLD: ["Conserver", ""], REVIEW: ["À revoir", "b-amb"] };
+
+async function deriveKey(user, pass, salt) {
+  const mat = await crypto.subtle.importKey("raw", new TextEncoder().encode(user + ":" + pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: ITER, hash: "SHA-256" }, mat, { name: "AES-GCM", length: 256 }, false, ["decrypt"]);
+}
+async function decrypt(user, pass) {
+  const b64 = await fetch("data/board.enc?t=" + Date.now()).then((r) => { if (!r.ok) throw new Error("contenu absent"); return r.text(); });
+  const raw = Uint8Array.from(atob(b64.trim()), (c) => c.charCodeAt(0));
+  const key = await deriveKey(user, pass, raw.slice(0, 16));
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: raw.slice(16, 28) }, key, raw.slice(28));
+  return JSON.parse(new TextDecoder().decode(pt));
+}
+
+function sens(a) { const s = SENS[a] || [a || "—", ""]; return `<span class="badge ${s[1]}">${esc(s[0])}</span>`; }
+
+function vueDecisions(d) {
+  const c = d.contraintes || [];
+  const contraintes = c.length ? `<div class="card" style="border-color:var(--rose)"><div class="lbl">Contraintes d'abord : cadre de risque du fonds</div><ul style="padding-left:16px">${c.map((r) => `<li><b class="${r.statut === "HORS" ? "neg" : "amb"}">${esc(r.statut)}</b> ${esc(r.label)} : ${r.emetteurs && r.emetteurs.length ? r.emetteurs.map((e) => `${esc(e.ticker)} ${pct(e.poids_fonds)} de l'actif (plafond ${pct(e.plafond, 0)})`).join(" · ") : `${esc(r.valeur)} ${esc(r.unite)}${r.detail ? ` (${esc(r.detail)})` : ""}`}</li>`).join("")}</ul></div>` : "";
+  const acts = (d.actions || []).filter((a) => a.sens !== "HOLD");
+  const quand = (a) => a.execution === "MAINTENANT" ? "maintenant" : a.execution === "SEANCE" ? `séance ${dmy(a.date)}` : a.execution === "CONDITIONNEL" ? `si · ${dmy(a.date)}` : "";
+  const actions = `<div class="card"><div class="lbl">Actions vs WG : dernier dossier d'instruction de chaque ligne</div><div class="wrap"><table><tr><th>ligne</th><th>action</th><th class="n">de → vers</th><th>quand</th><th>déclencheur</th></tr>${acts.map((a) => `<tr><td><b>${esc(a.ticker)}</b></td><td>${sens(a.sens)}</td><td class="n">${pct(a.de)} → <b>${pct(a.vers)}</b></td><td>${quand(a)}</td><td class="mut">${esc(a.declencheur)}</td></tr>`).join("")}</table></div></div>`;
+  const r = d.remploi;
+  const remploi = r ? `<div class="card"><div class="lbl">Plan de remploi des ventes immédiates (même séance)</div><p>Libéré <b>${pct(r.libere_pp)}</b> de la poche · remployé vers l'indice ${pct(Math.round((r.libere_pp - r.reliquat_a_decider_pp) * 100) / 100)} · <b class="amb">reliquat à décider en séance ${pct(r.reliquat_a_decider_pp)}</b></p><div class="grid2" style="margin-top:8px"><div><div class="sub">Ventes</div>${(r.ventes || []).map((v) => `<div><b>${esc(v.ticker)}</b> −${pct(v.pp)}</div>`).join("")}</div><div><div class="sub">Achats de remploi (vers le poids MASI)</div>${(r.achats || []).map((a) => `<div><b>${esc(a.ticker)}</b> +${pct(a.ajout_pp)} <span class="mut">${pct(a.de)} → ${pct(a.vers)}</span></div>`).join("")}</div></div><p class="sub" style="margin-top:8px">${esc(r.regle)}</p></div>` : "";
+  const j = d.journal || {};
+  const journal = `<div class="card"><div class="lbl">Journal des décisions</div><div class="wrap"><table><tr><th>ligne</th><th>sens</th><th class="n">de → vers</th><th>prévu</th><th>statut</th><th>résultat</th></tr>${(j.decisions || []).map((x) => `<tr><td><b>${esc(x.ticker)}</b></td><td>${sens(x.sens)}</td><td class="n">${pct(x.de)} → ${pct(x.vers)}</td><td class="mut">${esc((x.execution_prevue || "").toLowerCase())} ${dmy(x.date_prevue)}</td><td>${esc((x.statut || "").toLowerCase())}</td><td>${x.resolu ? `<span class="${x.juste ? "pos" : "neg"}">${sgn(x.xs_pp)} pp vs MASI</span>` : `<span class="mut">résolu à J+91</span>`}</td></tr>`).join("")}</table></div></div>`;
+  return contraintes + actions + remploi + journal;
+}
+
+function vueContexte(d) {
+  const c = d.contexte || {};
+  const lec = Object.fromEntries((c.regime || []).map((r) => [r.canal, r]));
+  const ordre = ["marche", "monde", "matieres", "change", "taux", "croissance", "flux", "regime"];
+  const tiles = ordre.filter((k) => c.canaux && c.canaux[k]).map((k) => { const t = c.canaux[k]; const l = lec[k]; return `<div class="tile" title="${esc(t.regle)}"><div class="lbl" style="margin:0">${esc(t.titre)}</div><div class="e">${esc(t.etat)}</div><div class="sub">${esc(t.etat2)}</div><div style="margin-top:4px"><b>${esc(t.cle)}</b></div>${l ? `<div class="sub" style="margin-top:4px">${esc(l.lecture)}</div>` : ""}</div>`; }).join("");
+  const chg = (c.changements || []).map((x) => `<div class="chg"><div class="t">${esc(x.titre)}</div><div class="sub">${dmy(x.date)} · ${esc(x.canal)}${x.consensus ? " · " + esc(x.consensus) : ""}</div><p style="margin-top:4px">${esc(x.fait)}</p>${x.mecanisme ? `<p class="m"><b>Mécanisme :</b> ${esc(x.mecanisme)}</p>` : ""}<div>${(x.lignes || []).map((l) => `<span class="chip ${l.sens === "+" ? "pos" : l.sens === "-" ? "neg" : ""}">${esc(l.ticker)} ${esc(l.sens)}</span>`).join("")}</div><div class="sub" style="margin-top:4px">${(x.sources || []).map((s) => s.url ? `<a href="${esc(s.url)}" target="_blank" rel="noreferrer">${esc(s.nom || "source")}</a>` : esc(s.nom || s.chemin)).join(" · ")}</div></div>`).join("");
+  const sc = (c.scenarios || []).map((s) => `<div class="tile"><div class="lbl" style="margin:0">Scénario ${esc(s.nom)}</div><p>${esc(s.recit)}</p><p class="sub" style="margin-top:4px">Déclencheurs : ${esc((s.declencheurs || []).join(" · "))}</p><p class="sub">gagnantes ${esc((s.gagnantes || []).join(", "))} · perdantes ${esc((s.perdantes || []).join(", "))}</p></div>`).join("");
+  const q = (c.questions || []).map((x) => `<li><b>${esc(x.question)}</b> <span class="mut">${esc(x.pourquoi)}</span></li>`).join("");
+  return `<div class="card"><div class="lbl">Contexte & régime : semaine du ${dmy(c.as_of)}</div><h2>${esc(c.titre)}</h2><p>${esc(c.synthese)}</p>${c.oet ? `<div class="oet"><b>One Essential Thing :</b> ${esc(c.oet)}</div>` : ""}</div>
+  <div class="card"><div class="lbl">Régime : les huit canaux</div><div class="tiles">${tiles}</div></div>
+  <div class="card"><div class="lbl">Ce qui a changé, et ce que ça touche dans le portefeuille</div><div class="grid2">${chg}</div></div>
+  <div class="card"><div class="lbl">Scénarios</div><div class="grid2">${sc}</div></div>
+  <div class="card"><div class="lbl">Questions pour le board</div><ol style="padding-left:18px">${q}</ol></div>`;
+}
+
+function vuePortefeuille(d) {
+  return `<div class="card"><div class="lbl">Portefeuille WG : poche, fonds, MASI, notre livre, action du dernier dossier</div><div class="wrap"><table><tr><th>ligne</th><th class="n">WG poche</th><th class="n">WG fonds</th><th class="n">MASI</th><th class="n">notre livre</th><th>tier</th><th>action</th></tr>${(d.portefeuille || []).map((p) => `<tr><td><b>${esc(p.ticker)}</b> <span class="sub">${esc(p.nom || "")}</span></td><td class="n">${pct(p.wg_poche)}</td><td class="n ${p.statut_plafond === "HORS" ? "neg" : p.statut_plafond === "PROCHE" ? "amb" : ""}" title="plafond ${pct(p.plafond, 0)}">${pct(p.wg_fonds)}${p.statut_plafond === "HORS" ? " ⚠" : ""}</td><td class="n mut">${pct(p.masi)}</td><td class="n">${pct(p.nous)}</td><td class="sub">${esc(p.tier || "—")}</td><td>${sens(p.action)}${p.action && p.action !== "HOLD" && p.vers != null ? ` <span class="sub">→ ${pct(p.vers)}</span>` : ""}</td></tr>`).join("")}</table></div><p class="sub" style="margin-top:6px">WG fonds = poids dans l'actif du fonds, sur lequel s'appliquent les plafonds réglementaires (10 % ; 15 % si l'émetteur pèse plus de 10 % de l'indice ; 20 % au-delà de 15 %).</p></div>`;
+}
+
+function vueOpportunites(d) {
+  return `<div class="card"><div class="lbl">Opportunités hors WG : lignes que notre livre juge positives et que WG ne détient pas, ou sous l'indice</div><div class="wrap"><table><tr><th>ligne</th><th>notre tier</th><th class="n">notre livre</th><th class="n">WG</th><th class="n">MASI</th><th class="n">jours de volume pour 1 % du fonds</th><th>statut</th></tr>${(d.opportunites || []).map((o) => `<tr><td><b>${esc(o.ticker)}</b></td><td>${esc(o.tier)}</td><td class="n">${pct(o.poids_livre)}</td><td class="n">${pct(o.poids_wg)}</td><td class="n mut">${pct(o.poids_masi)}</td><td class="n">${o.jours_pour_1pp_fonds ?? "—"}</td><td class="sub">${esc(o.statut)}</td></tr>`).join("")}</table></div><p class="sub" style="margin-top:6px">Une proposition d'achat n'existe qu'avec un dossier : instruction, avocat, condition d'entrée écrite. Au plus trois par semaine.</p></div>`;
+}
+
+const VUES = [["decisions", "Décisions", vueDecisions], ["contexte", "Contexte & régime", vueContexte], ["portefeuille", "Portefeuille", vuePortefeuille], ["opportunites", "Opportunités", vueOpportunites]];
+
+function render(d) {
+  const du = d.duel || {};
+  const nH = (d.contraintes || []).filter((r) => r.statut === "HORS").length;
+  const cur = (location.hash || "#decisions").slice(1);
+  $("#app").innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px"><h1>WG Board</h1><span class="sub">mis à jour ${esc(String(d.genere_le || "").slice(0, 16).replace("T", " "))} · <a href="#" id="logout">se déconnecter</a></span></div>
+  <div class="kpis"><div class="kpi"><div class="lbl" style="margin:0">Poche WG · 1 semaine</div><div class="v ${du.exces_1s_pp > 0 ? "pos" : du.exces_1s_pp < 0 ? "neg" : ""}">${sgn(du.poche_1s_pct)} %</div><div class="s">MASI ${sgn(du.masi_1s_pct)} % · écart ${sgn(du.exces_1s_pp)} pp</div></div>
+  <div class="kpi"><div class="lbl" style="margin:0">Poche WG · depuis janvier</div><div class="v ${du.exces_ytd_pp > 0 ? "pos" : du.exces_ytd_pp < 0 ? "neg" : ""}">${sgn(du.poche_ytd_pct)} %</div><div class="s">MASI ${sgn(du.masi_ytd_pct)} % · écart ${sgn(du.exces_ytd_pp)} pp</div></div>
+  <div class="kpi"><div class="lbl" style="margin:0">Actions à exécuter</div><div class="v">${(d.actions || []).filter((a) => a.execution === "MAINTENANT" || a.execution === "SEANCE").length}</div><div class="s">${(d.actions || []).filter((a) => a.execution === "CONDITIONNEL").length} conditionnelle(s)</div></div>
+  <div class="kpi"><div class="lbl" style="margin:0">Contraintes hors bande</div><div class="v ${nH ? "neg" : "pos"}">${nH}</div><div class="s">cadre de risque du fonds</div></div></div>
+  <div class="tabs">${VUES.map(([id, l]) => `<button class="tab ${id === cur ? "on" : ""}" data-v="${id}">${l}</button>`).join("")}</div>
+  <div id="vue">${(VUES.find(([id]) => id === cur) || VUES[0])[2](d)}</div>
+  <p class="sub" style="margin-top:14px">${esc(d.doctrine)}</p>`;
+  document.querySelectorAll(".tab").forEach((b) => b.onclick = () => { location.hash = b.dataset.v; render(d); window.scrollTo(0, 0); });
+  $("#logout").onclick = (e) => { e.preventDefault(); localStorage.removeItem("wgboardcreds"); location.reload(); };
+}
+
+async function open_(u, p, save) {
+  const d = await decrypt(u, p);
+  if (save) localStorage.setItem("wgboardcreds", btoa(unescape(encodeURIComponent(u + "\n" + p))));
+  $("#login").classList.add("hide"); $("#app").classList.remove("hide"); render(d);
+}
+$("#go").onclick = async () => { $("#err").textContent = ""; $("#go").disabled = true; try { await open_($("#u").value.trim(), $("#p").value, true); } catch (e) { $("#err").textContent = "Identifiants incorrects ou contenu indisponible."; } $("#go").disabled = false; };
+$("#p").addEventListener("keydown", (e) => { if (e.key === "Enter") $("#go").click(); });
+(async () => { const s = localStorage.getItem("wgboardcreds"); if (!s) return; try { const [u, p] = decodeURIComponent(escape(atob(s))).split("\n"); await open_(u, p, false); } catch (e) { localStorage.removeItem("wgboardcreds"); } })();
+</script>
+</body>
+</html>
